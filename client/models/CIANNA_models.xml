@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uws:job xmlns:uws="http://www.ivoa.net/xml/UWS/v1.0"
+         xmlns:xlink="http://www.w3.org/1999/xlink"
+         version="1.1">
+
+  <!-- ========== Core metadata required by UWS ========== -->
+  <uws:jobId>CIANNA_OTF_Job</uws:jobId>
+  <uws:runId>Altamira_Update</uws:runId>
+  <uws:ownerId>Altamira_SERVER</uws:ownerId>
+  <uws:phase>PENDING</uws:phase>
+  <uws:quote xsi:nil="true"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+  <uws:creationTime>2025-02-04T14:21:00Z</uws:creationTime>
+  <uws:startTime xsi:nil="true"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+  <uws:endTime xsi:nil="true"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+  <uws:executionDuration>3600</uws:executionDuration>
+  <uws:destruction>2025-02-05T14:21:00Z</uws:destruction>
+
+  <!-- ========== Parameters (CIANNA model configuration) ========== -->
+  <uws:parameters>
+    <uws:parameter id="CIANNAVersion">1.0.0</uws:parameter>
+    <uws:parameter id="ModelName">net0_s1800_RACS_nbbox8.dat</uws:parameter>
+    <uws:parameter id="ReleaseDate">2025-02-01</uws:parameter>
+    <uws:parameter id="BaseMemoryFootprint">0</uws:parameter>
+    <uws:parameter id="PerImageMemoryFootprint">0</uws:parameter>
+    <uws:parameter id="OriginalInputDim">256x256x1x1</uws:parameter>
+    <uws:parameter id="MinInputDim">128x128x1x1</uws:parameter>
+    <uws:parameter id="MaxInputDim">512x512x1x1</uws:parameter>
+    <uws:parameter id="YOLOGridElemDim">16x16x1x1</uws:parameter>
+    <uws:parameter id="YOLOBoxCount">8</uws:parameter>
+    <uws:parameter id="YOLOParamCount">5</uws:parameter>
+    <uws:parameter id="YOLOGridCount">16</uws:parameter> 
+    <uws:parameter id="DataNormalization">Global</uws:parameter>
+    <uws:parameter id="DataNormalizationType">tanh, sqrt, linear, log</uws:parameter>
+    <uws:parameter id="DataQuantization">float32</uws:parameter>
+    <uws:parameter id="ReceptiveField">100</uws:parameter>
+    <uws:parameter id="TrainingQuantization">FP32C_FP32A</uws:parameter>
+    <uws:parameter id="MaxBatchSize">8</uws:parameter>
+    <uws:parameter id="BiasInit">0.1</uws:parameter>
+    <uws:parameter id="MaxNbObjPerImage">280</uws:parameter>
+    <uws:parameter id="InferenceMode">Grid</uws:parameter>
+    <uws:parameter id="InferenceQuantization">FP16C_FP32A, FP32C_FP32A</uws:parameter>
+    <uws:parameter id="InferencePatchShift">240</uws:parameter>
+    <uws:parameter id="InferenceOrigOffset">128</uws:parameter>
+    <uws:parameter id="ModelURL">https://zenodo.org/records/xxxxx</uws:parameter>
+    <uws:parameter id="TrainingDatasetName">SKA SDC1 Data</uws:parameter>
+    <uws:parameter id="TrainingDatasetDescription">Synthetic data for SKA Data Challenge 1</uws:parameter>
+    <uws:parameter id="TrainingDatasetLocation">https://example.org/SDC1</uws:parameter>
+    <uws:parameter id="CheckpointPath">./net_save/net0_s1800.dat</uws:parameter>
+    <!-- Post-processing thresholds (YOLO / NMS / filtrage) -->
+    <uws:parameter id="BoxPriorClass">0,0,0,0,0,1,1,4</uws:parameter>
+    <uws:parameter id="FirstNMSThresholds">0.01,-0.2,-0.4,-0.6</uws:parameter>
+    <uws:parameter id="FirstNMSObjThresholds">1.0,0.7,0.5,0.35</uws:parameter>
+    <uws:parameter id="ObjThresholds">1.0,0.8,0.6,0.4</uws:parameter>
+    <uws:parameter id="SecondNMSThreshold">-0.15</uws:parameter>
+    <uws:parameter id="ValMedLims">0.6,0.3,0.1</uws:parameter>
+    <uws:parameter id="ValMedObj">0.8,0.6,0.4</uws:parameter>
+    <uws:parameter id="ProbObjCases">
+      0.3101,0.2759,0.1536,0.3101,0.2759,0.2314,0.1146,0.0962,0.0468
+    </uws:parameter>
+
+  </uws:parameters>
+
+  <!-- ========== Results placeholder ========== -->
+  <uws:results>
+    <uws:result id="output"
+                xlink:href="fwd_res/net0_rts_001.dat"
+                mime-type="application/octet-stream"/>
+  </uws:results>
+
+  <!-- ========== Error summary (optional) ========== -->
+  <uws:errorSummary type="transient" hasDetail="false">
+    <uws:message>Model trained with simulated SKA data.</uws:message>
+  </uws:errorSummary>
+
+  <!-- ========== Optional free-form job information ========== -->
+  <uws:jobInfo>
+    <uws:note>Job created manually.</uws:note>
+  </uws:jobInfo>
+
+</uws:job>
+

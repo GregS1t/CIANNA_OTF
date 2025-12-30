@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<MachineConfig>
+  <System>
+    <Hostname>Ares6</Hostname>
+    <OS>Linux</OS>
+    <OS Version>#29~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Thu Jun 26 14:16:59 UTC 2</OS Version>
+    <Platform>Linux-6.11.0-29-generic-x86_64-with-glibc2.39</Platform>
+    <Architecture>x86_64</Architecture>
+  </System>
+  <CPU>
+    <model>x86_64</model>
+    <cores>14</cores>
+    <threads>20</threads>
+    <frequency>788.2502999999999</frequency>
+    <load>3.8</load>
+    <RAM unit="GB">67.01</RAM>
+  </CPU>
+  <GPU count="1">
+    <GPU id="0">
+      <name>NVIDIA RTX 3000 Ada Generation Laptop GPU</name>
+      <memory unit="MB">8188.0</memory>
+      <free_memory_MB>6559.12</free_memory_MB>
+      <compute_capability>8.9</compute_capability>
+      <Supports>
+        <fp16>true</fp16>
+        <fp32>true</fp32>
+        <int8>true</int8>
+        <bfloat16>true</bfloat16>
+      </Supports>
+    </GPU>
+  </GPU>
+</MachineConfig>

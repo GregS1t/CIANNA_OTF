@@ -1,0 +1,44 @@
+[server]
+port = 5000
+host = "0.0.0.0"
+debug = true
+verbose = true
+
+[cianna]
+model_registry = "CIANNA_models.xml"
+path = "/home/gsainton/01_CODES/CIANNA/src/build/lib.linux-x86_64-cpython-311"
+
+[paths]
+server_root = "."
+runtime_root = "./runtime"
+
+[watcher]
+scan_interval = 2              # secondes entre deux scans
+max_model_hold_time = 15       # temps max (s) avant de changer de modèle
+
+[logging]
+log_level = "DEBUG"
+log_format = "%(asctime)s - %(levelname)s - %(message)s"
+
+[image]
+clip_min = 99.4
+clip_max = 99.8
+
+[patch]
+patch_shift = 240
+orig_offset = 128
+
+[scheduler]
+poll_interval = 2.5
+max_wait_time = 15.0
+batch_jobs_thres = 4
+
+[policy]                      # Pour mettre en place un PolicyManager
+min_jobs = 1
+max_jobs = 8
+max_batch = 8
+max_workers = 2
+max_wait_s = 2.0
+round_robin = true       # Pour mettre de l'équité entre les paniers
+prefer_first_job_qos = true
+# max_mem_bytes = 6000000000

@@ -1,0 +1,9 @@
+# runtime/.gitignore
+JOBS/*
+logs/*
+net_save/*
+tmp/*
+!JOBS/.gitkeep
+!logs/.gitkeep
+!net_save/.gitkeep
+!tmp/.gitkeep

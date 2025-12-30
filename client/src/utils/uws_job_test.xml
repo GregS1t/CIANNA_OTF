@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uws:job xmlns:uws="http://www.ivoa.net/xml/UWS/v1.0"
+         xmlns:xlink="http://www.w3.org/1999/xlink"
+         version="1.1">
+
+  <!-- ========== Core metadata UWS ========== -->
+  <uws:jobId>CIANNA_Job_001</uws:jobId>
+  <uws:runId>SDC1_Cornu_2024</uws:runId>
+  <uws:ownerId>user@obspm.fr</uws:ownerId>
+  <uws:phase>PENDING</uws:phase>
+  <uws:quote xsi:nil="true"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+  <uws:creationTime>2025-02-04T14:21:00Z</uws:creationTime>
+  <uws:startTime xsi:nil="true"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+  <uws:endTime xsi:nil="true"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+  <uws:executionDuration>3600</uws:executionDuration>
+  <uws:destruction>2025-02-05T14:21:00Z</uws:destruction>
+
+  <!-- ========== CIANNA model configuration ========== -->
+  <uws:parameters>
+    <uws:parameter id="CIANNAVersion">1.0.0</uws:parameter>
+    <uws:parameter id="ModelName">net0_s1800.dat</uws:parameter>
+    <uws:parameter id="ReleaseDate">2025-02-01</uws:parameter>
+    <uws:parameter id="BaseMemoryFootprint">0</uws:parameter>
+    <uws:parameter id="PerImageMemoryFootprint">0</uws:parameter>
+    <uws:parameter id="OriginalInputDim">256x256x1x1</uws:parameter>
+    <uws:parameter id="MinInputDim">128x128x1x1</uws:parameter>
+    <uws:parameter id="MaxInputDim">512x512x1x1</uws:parameter>
+    <uws:parameter id="YOLOGridElemDim">16x16x1x1</uws:parameter>
+    <uws:parameter id="YOLOBoxCount">8</uws:parameter>
+    <uws:parameter id="YOLOParamCount">5</uws:parameter>
+    <uws:parameter id="YOLOGridCount">16</uws:parameter>
+    <uws:parameter id="DataNormalization">Global</uws:parameter>
+    <uws:parameter id="DataNormalizationType">tanh</uws:parameter>
+    <uws:parameter id="DataQuantization">float32</uws:parameter>
+    <uws:parameter id="ReceptiveField">100</uws:parameter>
+    <uws:parameter id="TrainingQuantization">FP32C_FP32A</uws:parameter>
+    <uws:parameter id="InferenceMode">Grid</uws:parameter>
+    <uws:parameter id="InferenceQuantization">FP16C_FP32A</uws:parameter>
+    <uws:parameter id="InferencePatchShift">240</uws:parameter>
+    <uws:parameter id="InferenceOrigOffset">128</uws:parameter>
+    <uws:parameter id="ModelURL">https://zenodo.org/records/xxxxx</uws:parameter>
+    <uws:parameter id="TrainingDatasetName">SKA SDC1 Data</uws:parameter>
+    <uws:parameter id="TrainingDatasetDescription">Synthetic data for SKA Data Challenge 1</uws:parameter>
+    <uws:parameter id="TrainingDatasetLocation">https://example.org/SDC1</uws:parameter>
+    <uws:parameter id="CheckpointPath">./net_save/net0_s1800.dat</uws:parameter>
+  </uws:parameters>
+
+  <uws:results>
+    <uws:result id="output"
+                xlink:href="fwd_res/net0_rts_001.dat"
+                mime-type="application/octet-stream"/>
+  </uws:results>
+
+  <uws:errorSummary type="transient" hasDetail="false">
+    <uws:message>Model trained with simulated SKA data.</uws:message>
+  </uws:errorSummary>
+
+  <uws:jobInfo>
+    <uws:note>Job created automatically by the CIANNA OTF scheduler.</uws:note>
+  </uws:jobInfo>
+
+</uws:job>

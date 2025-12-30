@@ -1,0 +1,10 @@
+{
+    "SERVER_URL":"http://145.238.67.60:5000",
+    "URL_MODELS":"145.238.67.60:5000/models/CIANNA_models.xml",
+    "LOCAL_FILE_MODELS": "./models/CIANNA_models.xml",
+    "CLIENT_CONNEXION": "local",
+    "IMAGE_FOLDER": "~/01_CODES/DIR_images",
+    "JOB_DIR":"client/JOBS_SENT",
+    "HELPERS_PY": "CODE/client/.py",
+    "TIME_POLLING": 10
+}
