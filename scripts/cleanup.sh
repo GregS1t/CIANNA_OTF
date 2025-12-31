@@ -18,7 +18,7 @@ fi
 echo "Deleting files starting with 'temp', 'output_' and 'fits_' in directory: $TARGET_DIR"
 
 # Find and delete matching files
-find "$TARGET_DIR" -type f \( -name 'temp*' -o -name 'output_*' -o -name 'fits_*' -o -name 'pred*.txt' \) -exec rm -v {} \;
+find "$TARGET_DIR" -type f \( -name 'temp*' -o -name 'output_*' -o -name 'fits_*.fits' -o -name 'pred*.txt' \) -exec rm -v {} \;
 
 echo "Deleting __pycache__ directories in directory: $TARGET_DIR"
 # Find and delete __pycache__ directories recursively
