@@ -9,8 +9,8 @@ model_registry = "CIANNA_models.xml"
 path = "/home/gsainton/01_CODES/CIANNA/src/build/lib.linux-x86_64-cpython-311"
 
 [paths]
-server_root = "."
-runtime_root = "./runtime"
+runtime_root = "runtime"
+logs_root = "logs"
 
 [watcher]
 scan_interval = 2              # secondes entre deux scans

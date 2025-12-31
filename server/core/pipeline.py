@@ -72,7 +72,7 @@ JOBS_PENDING = cfg.jobs_pending
 JOBS_EXECUTING = cfg.jobs_executing
 JOBS_COMPLETED = cfg.jobs_completed
 JOBS_ERROR = cfg.jobs_error
-JOBS_CANCELLED = cfg.jobs_cancelled
+JOBS_ABORTED = cfg.jobs_aborted
 MODEL_DIR = cfg.models_dir
 XML_MODEL_PATH = cfg.model_registry_path
 MAX_WAIT_TIME = cfg.max_wait_time
@@ -463,7 +463,8 @@ def load_cianna_model_per_batch(model_path: str, model_params: dict) -> None:
 
 
 def run_batch_and_finalize(entries: list[dict], model_path: str,
-                           base_params: dict, cnn) -> None:
+                           base_params: dict, cnn,
+                           is_cancelled=None) -> None:
     """
     Execute a batch of jobs for a given model_path.
     Update job phases/directories accordingly.
@@ -480,21 +481,44 @@ def run_batch_and_finalize(entries: list[dict], model_path: str,
     Returns:
         None
     """
-    # 1)  EXECUTING 
+    # 0) Check if cancelled before starting
+    if is_cancelled is None:
+        def is_cancelled(_pid: str) -> bool:
+            return False
+
+    active_entries = []
     for e in entries:
+        pid = e.get("process_id")
+        if pid and is_cancelled(pid):
+            try:
+                JOB_STORE.move_to(pid, "ABORTED")
+                JOB_STORE.set_phase(pid, "ABORTED", comment="Aborted before execution")
+            except Exception:
+                pass
+        else:
+            active_entries.append(e)
+
+    # nothing to do
+    if not active_entries:
+        return
+
+
+
+    # 1)  EXECUTING 
+    for e in active_entries:
         pid = e.get("process_id")
         try:
             JOB_STORE.set_phase(pid, "EXECUTING")
         except Exception:
             logger.exception("[BATCH] set EXECUTING failed for %s", pid)
 
-    # 2) exécuter le forward du lot
+    # 2) Execute the forward pass on the batch
     try:
-        batch_prediction(entries, model_path, base_params, cnn)
+        batch_prediction(active_entries, model_path, base_params, cnn)
     except Exception as err:
         logger.exception("[BATCH] batch_prediction failed: %s", err)
         # 3a) tous en ERROR (ceux non déjà finalisés par batch_prediction)
-        for e in entries:
+        for e in active_entries:
             pid = e.get("process_id")
             try:
                 move_to_error(pid, comment=str(err))
@@ -504,13 +528,20 @@ def run_batch_and_finalize(entries: list[dict], model_path: str,
         raise
     else:
         # 3b) tous en COMPLETED (si batch_prediction ne l’a pas déjà fait)
-        for e in entries:
+        for e in active_entries:
             pid = e.get("process_id")
+            if pid and is_cancelled(pid):
+                try:
+                    JOB_STORE.move_to(pid, "ABORTED")
+                    JOB_STORE.set_phase(pid, "ABORTED",
+                                        comment="Aborted during execution")
+                except Exception:
+                    pass
+                continue
             try:
                 move_to_completed(pid)
             except Exception:
                 logger.exception("[BATCH] move_to_completed failed %s", pid)
-
 
 def _post_process_dat(dat_path, img_info, prob_obj_cases, val_med_lims,
                     val_med_obj, first_nms_thresholds, 
@@ -548,11 +579,6 @@ def _post_process_dat(dat_path, img_info, prob_obj_cases, val_med_lims,
 
     repeat = 1
 
-
-
-
-
-
     try:
         predict = np.reshape(
         pred_data,
@@ -565,9 +591,6 @@ def _post_process_dat(dat_path, img_info, prob_obj_cases, val_med_lims,
         return np.zeros((0, 0), dtype="float32")
 
     predict = np.mean(predict, axis=0)
-    print("Predict shape:", np.shape(predict))
-    print("1st order predictions filtering ...")
-    print(f"yolo_nb_reg = {yolo_nb_reg}")
     final_boxes = []
 
     c_tile = np.zeros(
@@ -628,7 +651,6 @@ def _post_process_dat(dat_path, img_info, prob_obj_cases, val_med_lims,
     if not final_boxes:
         print("No boxes kept after NMS.")
         return np.zeros((0, 0), dtype="float32")
-    print("Done !")
     flat_kept = np.vstack(final_boxes)
     return flat_kept
 

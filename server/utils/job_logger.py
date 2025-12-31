@@ -11,6 +11,8 @@ import os
 import shutil
 from typing import Any, Dict, Optional
 
+from utils.config import cfg
+
 logger = logging.getLogger(__name__)
 
 
@@ -206,9 +208,8 @@ def default_store() -> JobStore:
       logs/
         job_log.json + log_backups/
     """
-    runtime = Path("runtime")
-    jobs_root = runtime / "JOBS"
-    logs_root = Path("logs")
+    jobs_root = Path(cfg.jobs_root)
+    logs_root = Path(cfg.log_dir)
     logs_root.mkdir(parents=True, exist_ok=True)
     (jobs_root / "PENDING").mkdir(parents=True, exist_ok=True)
     (jobs_root / "EXECUTING").mkdir(parents=True, exist_ok=True)

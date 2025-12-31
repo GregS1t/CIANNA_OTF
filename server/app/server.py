@@ -69,8 +69,9 @@ MAX_WAIT_S = cfg.get("policy", "max_wait_s", default=2.0)
 ROUND_ROBIN = cfg.get("policy", "round_robin", default=True)
 
 # Cancellation tracking
-CANCELLED_IDS: set[str] = set()
-CANCEL_LOCK = Lock()
+# added in 2025-12-31
+ABORTED_IDS: set[str] = set()
+ABORTED_LOCK = Lock()
 
 # Scheduler config
 POLL_INTERVAL = cfg.get("scheduler", "poll_interval", default=2.0)
@@ -82,12 +83,13 @@ PENDING_DIR = cfg.jobs_pending
 EXECUTING_DIR = cfg.jobs_executing
 COMPLETED_DIR = cfg.jobs_completed
 ERROR_DIR = cfg.jobs_error
-CANCELLED_DIR = cfg.jobs_cancelled
+ABORTED_DIR = cfg.jobs_aborted
 
 for d in [PENDING_DIR, EXECUTING_DIR, COMPLETED_DIR, ERROR_DIR,
-          CANCELLED_DIR, QUEUED_DIR]:
+          ABORTED_DIR, QUEUED_DIR]:
     os.makedirs(d, exist_ok=True)
 
+# Should be in a config file... 
 MAX_UPLOAD_MB    = 1000       # Maximum upload size in megabytes
 ALLOWED_XML_EXT  = {".xml"}   # to be sure that only XML files are uploaded
 ALLOWED_FITS_EXT = {".fits"}  # to be sure that only FITS files are uploaded
@@ -98,16 +100,28 @@ import CIANNA as cnn
 
 # Few helper functions
 def _ext_ok(filename: str, allowed: set[str]) -> bool:
+    """Check if the file extension is allowed."""
     return Path(filename).suffix.lower() in allowed
 
-
 def _abort_json(status: int, msg: str):
+    """Abort request with JSON error message and logging.
+    Args:
+        status (int): HTTP status code.
+        msg (str): Error message.
+    Returns: Tuple[Dict, int]
+    """
     logger.warning("POST /jobs/ -> %s: %s", status, msg)
     return jsonify({"error": msg}), status
 
 
 def _check_content_length(max_mb: int) -> bool:
-    # Retourne True si la taille totale de requête est conforme
+    """
+    Check if the request content length is within the allowed limit.
+    Args:
+        max_mb (int): Maximum allowed size in megabytes.
+    Returns:
+        bool: True if within limit, False otherwise.
+        """
     cl = request.content_length
     if cl is None:
         return True  # pas d’info fournie par le client
@@ -124,20 +138,50 @@ BUFF_LOCK = Lock()                   # protège BUFFERS/OLDEST_TS/KEYS
 
 def _extract_model_quant(xml_path: Path) -> Tuple[str, str]:
     """
-    Extrait (model_id, quantization) depuis le XML côté client.
-    Fallback sûrs si manquants.
+    Extracts model ID and quantization from client XML.
+    Args:
+        xml_path (Path): Path to the job's XML file.
+    Returns:
+        Tuple[str, str]: (model ID, quantization)
+
     """
     try:
         from fileio.process_xml import extract_model_and_quant
         model, quant = extract_model_and_quant(str(xml_path))
         return (model or "default", quant or "FP32C_FP32A")
     except Exception:
-        # fallback conservateur (si le XML est minimal)
+        # fallback (si le XML est minimal)
         return ("default", "FP32C_FP32A")
 
 
+def _remove_from_buffers(job_id: str) -> bool:
+    """
+    Remove a job from any batching buffer.
+
+    Args:
+        job_id (str): Job identifier.
+    Returns:
+        bool: True if the job was removed, False otherwise.
+    """
+    removed = False
+    with BUFF_LOCK:
+        for k in list(KEYS):
+            buf = BUFFERS.get(k)
+            if not buf:
+                continue
+            new_buf = deque([j for j in buf if j.job_id != job_id])
+            if len(new_buf) != len(buf):
+                BUFFERS[k] = new_buf
+                removed = True
+                if not new_buf:
+                    BUFFERS.pop(k, None)
+                    OLDEST_TS.pop(k, None)
+                    KEYS.remove(k)
+    return removed
+
+
 def _enqueue_buffer(j: JobLite) -> None:
-    """Range un job dans le bon panier (model, quant)."""
+    """Add job in the right basket (model, quant)."""
     global KEYS
     model, quant = j.model_id or "default", j.quantization or "FP32C_FP32A"
     key: Key = (model, quant)
@@ -164,12 +208,12 @@ def _drain_incoming_to_buffers() -> None:
         except Exception:
             break  # file vide
 
-        with CANCEL_LOCK:
-            if job_id in CANCELLED_IDS:
-                # Marque le job comme CANCELLED et range le dossier
+        with ABORTED_LOCK:
+            if job_id in ABORTED_IDS:
+                # Marque le job comme ABORTED et range le dossier
                 try:
-                    JOB_STORE.move_to(job_id, "CANCELLED")
-                    JOB_STORE.set_phase(job_id, "CANCELLED", comment="Cancelled by client (PHASE=ABORT)")
+                    JOB_STORE.move_to(job_id, "ABORTED", comment="Aborted by client (PHASE=ABORT)")
+                    JOB_STORE.set_phase(job_id, "ABORTED", comment="Aborted by client (PHASE=ABORT)")
                 except Exception:
                     pass
                 continue
@@ -318,8 +362,12 @@ def _job_worker(idx: int):
                 reg = {}
             base_params = {**reg, **(first_params_model or {})}
 
-            # 4) Exécuter le forward de TOUT le lot
-            run_batch_and_finalize(entries, model_path_ref, base_params, cnn)
+            # 4) Execute forward pass + finalization
+            def _is_cancelled(pid: str) -> bool:
+                with ABORTED_LOCK:
+                    return pid in ABORTED_IDS
+            run_batch_and_finalize(entries, model_path_ref, base_params,
+                                   cnn, is_cancelled=_is_cancelled)
 
             logger.info("Worker #%d: batch done (model=%s quant=%s)",
                         idx, model_name, quant)
@@ -353,7 +401,7 @@ def get_job_directory(job_id):
                 or (None, None) if not found.
     """
     for state_dir in [PENDING_DIR, EXECUTING_DIR, COMPLETED_DIR,
-                      ERROR_DIR, CANCELLED_DIR, QUEUED_DIR]:
+                      ERROR_DIR, ABORTED_DIR, QUEUED_DIR]:
         job_path = os.path.join(state_dir, job_id)
         if os.path.isdir(job_path):
             return job_path, os.path.basename(state_dir)
@@ -495,7 +543,7 @@ def determine_phase(state_folder_name):
         'EXECUTING': 'EXECUTING',
         'COMPLETED': 'COMPLETED',
         'ERROR': 'ERROR',
-        'CANCELLED': 'CANCELLED',
+        'ABORTED': 'ABORTED',
         'QUEUED': 'QUEUED',
     }
     return mapping.get(state_folder_name, 'UNKNOWN')
@@ -552,6 +600,61 @@ def get_job_status(job_id):
                         mimetype='application/xml')
     else:
         return jsonify(job_info)
+
+# Endpoint to set the phase of a job (e.g., cancellation)
+# added on 2025-12-31
+######
+@app.route("/jobs/<job_id>/phase", methods=["POST"])
+def set_job_phase(job_id: str):
+    """
+    UWS-like cancellation:
+      - Accepts PHASE=ABORT as form field or {"PHASE":"ABORT"} JSON
+      - Marks job as ABORTED (best-effort)
+    """
+    # read PHASE from either form or json
+    phase = request.form.get("PHASE")
+    if phase is None:
+        payload = request.get_json(silent=True) or {}
+        phase = payload.get("PHASE")
+
+    if not phase:
+        return jsonify({"error": "Missing PHASE"}), 400
+
+    phase = str(phase).upper()
+    if phase != "ABORT":
+        return jsonify({"error": f"Unsupported PHASE={phase} (only ABORT)"}), 400
+
+    # job existence?
+    job_dir, state = get_job_directory(job_id)
+    if job_dir is None:
+        return jsonify({"error": "Job not found"}), 404
+
+    # mark aborted request
+    with ABORTED_LOCK:
+        ABORTED_IDS.add(job_id)
+
+    # best-effort removal from buffers
+    removed_from_buffers = _remove_from_buffers(job_id)
+
+    # best-effort move folder to ABORTED if not already terminal
+    # (If it's already COMPLETED/ERROR/ABORTED -> keep it terminal)
+    if state in ("COMPLETED", "ERROR", "ABORTED"):
+        return jsonify({"jobId": job_id, "phase": state, "removedFromBuffers": removed_from_buffers}), 200
+
+    try:
+        JOB_STORE.move_to(job_id, "ABORTED")
+        JOB_STORE.set_phase(job_id, "ABORTED", comment="Aborted by client (PHASE=ABORT)")
+        return jsonify({"jobId": job_id, "phase": "ABORTED", "removedFromBuffers": removed_from_buffers}), 200
+    except Exception as e:
+        # if currently executing inside batch, we may not be able to move immediately
+        # keep cancellation flag, pipeline will enforce later
+        try:
+            JOB_STORE.set_phase(job_id, "ABORTED", comment=f"Abortion requested; will apply asap: {e}")
+        except Exception:
+            pass
+        return jsonify({"jobId": job_id, "phase": "ABORTED", "removedFromBuffers": removed_from_buffers}), 202
+
+
 # ---------------------------------------------------------------------
 # LA OU LA MAGIE OPERE
 # ---------------------------------------------------------------------

@@ -6,29 +6,35 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def poll_for_completion(server_url, job_id, user_id, poll_interval=10):
+def poll_for_completion(server_url, job_id, user_id, poll_interval=10, timeout_s=600):
     """
     Periodically check if the UWS job is completed.
 
-    Args:
-        server_url (str): Server base URL.
-        job_id (str): Job ID to monitor.
-        interval (int): Polling interval in seconds.
-
     Returns:
-        bool: True if job completed, False if error or timeout.
+        str: terminal phase among {"COMPLETED","ERROR","CANCELLED","ABORTED","TIMEOUT"}.
     """
+    t0 = time.time()
     while True:
-        response = requests.get(f"{server_url}/jobs/{job_id}")
+        if (time.time() - t0) > timeout_s:
+            logger.error(f"[CLIENT][poll_for_completion] TIMEOUT for Job ID: {job_id}[USER: {user_id}]")
+            return "TIMEOUT"
+
+        try:
+            response = requests.get(f"{server_url}/jobs/{job_id}", timeout=10)
+        except Exception as e:
+            logger.error(f"[CLIENT][poll_for_completion] Request failed for Job {job_id}: {e}")
+            time.sleep(poll_interval)
+            continue
+
         if response.status_code == 200:
-            phase = response.json().get("phase")
+            phase = (response.json() or {}).get("phase")
             logger.info(f"[CLIENT][poll_for_completion] PHASE : {phase} for Job ID: {job_id}[USER: {user_id}]")
-            if phase == "COMPLETED":
-                logger.info(f"[CLIENT][poll_for_completion] Job {job_id} completed.")
-                return True
-            elif phase == "ERROR":
-                logger.error(f"[CLIENT][poll_for_completion] Job {job_id} encountered an error.")
-                return False
+
+            if phase in ("COMPLETED", "ERROR", "CANCELLED", "ABORTED"):
+                return phase
+        else:
+            logger.warning(f"[CLIENT][poll_for_completion] HTTP {response.status_code} for Job {job_id}")
+
         time.sleep(poll_interval)
 
 

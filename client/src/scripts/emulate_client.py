@@ -40,6 +40,8 @@ PREDICTIONS_DIR = CLIENT_ROOT / "predictions"
 JOBS_SENT_DIR = CLIENT_ROOT / "JOBS_SENT"
 
 
+TIME_POLLING = 5  # seconds between each poll for job completion
+
 def load_config(config_path):
     """
     Load and parse a JSON configuration file.
@@ -125,11 +127,11 @@ def emulate_client_request(server_url, image_path, config, params):
 
             try:
                 # Poll for job completion of status
-                if poll_for_completion(server_url, process_id, user_id,
-                                       poll_interval=config.get("TIME_POLLING")):
+                phase = poll_for_completion(server_url, process_id, user_id, poll_interval=TIME_POLLING, timeout_s=600)
+                if phase == "COMPLETED":
                     download_result(server_url, process_id, destination_folder=RESULTS_DIR)
                 else:
-                    logger.error(f"[EMULATE] Error: Job {user_id} did not complete successfully.")
+                    logger.info(f"[CLIENT] Job {process_id} finished with phase={phase} (no download).")
 
             except requests.ConnectionError as e:
                 logger.error(f"[EMULATE] Network error while polling/downloading: {e}")
